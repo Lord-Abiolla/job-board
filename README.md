@@ -13,6 +13,47 @@ The platform supports two types of users:
 
 All users interact through a clean, responsive interface powered by `Next.js` App Router, with Role-Based Access Control (RBAC) controlling what each user can see and do.
 
+## Project Structure
+```
+app/
+  (public)/
+    jobs/
+      page.tsx                # Job listings page
+      [jobId]/
+        page.tsx              # Job detail page
+
+  (auth)/
+    auth/
+      login/page.tsx
+      register/page.tsx
+
+  (dashboard)/
+    dashboard/
+      layout.tsx              # Dashboard layout + auth guard
+      page.tsx                # Role-based dashboard home
+      jobs/
+        new/page.tsx          # Employer: Create job
+        [jobId]/edit/page.tsx # Employer: Edit job
+
+components/
+  jobs/
+  dashboard/
+  ui/
+
+context/
+  AuthContext.tsx             # Authentication & user state
+  RoleGate.tsx                # Role-based access wrapper
+
+lib/
+  api/
+    client.ts                 # Base API config
+    jobs.ts                   # Job endpoints
+    auth.ts                   # Auth endpoints
+
+hooks/
+types/
+```
+
 
 ## Tech Stack
 
