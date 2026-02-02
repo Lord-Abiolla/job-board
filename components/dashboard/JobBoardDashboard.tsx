@@ -64,8 +64,8 @@ export default function JobBoardDashboard() {
                 debounceQuery.trim().length === 0 ||
                 j.title.toLocaleLowerCase().includes(debounceQuery.toLowerCase());
 
-            const matchesJobType = jobType === "any" || j.jobType === jobType;
-            const matchesEmployment = employment === "any" || j.employmentType === employment;
+            const matchesJobType = jobType === "any" || j.job_type.toLowerCase() === jobType;
+            const matchesEmployment = employment === "any" || j.employment_type.toLowerCase() === employment;
 
             const ageDays = j.createdAt ? daysAgo(j.createdAt) : 9999;
             const matchesDate =
@@ -102,7 +102,9 @@ export default function JobBoardDashboard() {
 
                         <nav className="hidden items-center gap-2 sm:flex">
                             <PillLink href="/jobs" label="Jobs" active />
-                            <PillLink href="/applications" label="Applications" />
+                            {user?.role === "CANDIDATE" && (
+                                <PillLink href="/applications" label="Applications" />
+                            )}
                             <PillLink href="/profile" label="Profile" />
                         </nav>
 
@@ -201,13 +203,14 @@ export default function JobBoardDashboard() {
                                 </p>
                             </div>
 
-                            {/*employer quick action */}
-                            <Link
-                                href="/jobs/new"
-                                className="inline-flex items-center gap-2 rounded-xl bg-white px-4 py-2 text-sm font-medium text-slate-900 shadow-sm ring-1 ring-slate-200 transition hover:bg-slate-50 focus:outline-none focus:ring-4 focus:ring-emerald-100"
-                            >
-                                ➕ Post a Job
-                            </Link>
+                            {user?.role === "EMPLOYER" && (
+                                <Link
+                                    href="/jobs/new"
+                                    className="inline-flex items-center gap-2 rounded-xl bg-white px-4 py-2 text-sm font-medium text-slate-900 shadow-sm ring-1 ring-slate-200 transition hover:bg-slate-50 focus:outline-none focus:ring-4 focus:ring-emerald-100"
+                                >
+                                    ➕ Post a Job
+                                </Link>
+                            )}
                         </div>
 
                         <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">

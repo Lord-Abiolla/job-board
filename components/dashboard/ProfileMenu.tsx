@@ -14,7 +14,6 @@ export default function ProfileMenu() {
         if (first) return first;
         const email = user?.email?.trim();
         if (email) return email.split("@")[0];
-        return "User";
     }, [user]);
 
     useEffect(() => {
@@ -33,7 +32,6 @@ export default function ProfileMenu() {
         };
     }, []);
 
-    // While auth is loading, show a subtle placeholder button (prevents layout jump)
     if (loading) {
         return (
             <div className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-2 text-sm text-white/80">
@@ -80,7 +78,7 @@ export default function ProfileMenu() {
                 >
                     <div className="px-4 py-3">
                         <p className="text-sm font-semibold text-white">{displayName}</p>
-                        <p className="mt-0.5 truncate text-xs text-emerald-100/70">{user.email}</p>
+                        <p className="mt-0.5 truncate text-xs text-emerald-100/70">{user.first_name}</p>
                     </div>
 
                     <div className="h-px bg-white/10" />

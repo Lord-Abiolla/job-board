@@ -1,37 +1,42 @@
-import { apiClient } from "./client";
-import type { Job } from "@/types/job";
+import { apiClient } from "@/lib/api/client";
+import type { Job, JobUpsertPayload } from "@/types/job";
 
-// GET Jobs
-export async function getJobs(): Promise<Job[]> {
-    const res = await apiClient.get<{results?: Job[]} | Job[]>("/jobs/");
+type Paginated<T> = {
+    count: number;
+    next: string | null;
+    previous: string | null;
+    results: T[];
+};
+
+export async function getJobs(params?: {
+    search?: string;
+    job_type?: string;
+    employment_type?: string;
+    status?: string;
+    mine?: boolean;
+    page?: number;
+}): Promise<Job[]> {
+    const res = await apiClient.get<Paginated<Job> | Job[]>("/jobs/", { params });
 
     const data = res.data;
-    return Array.isArray(data) ? data : data.results ?? [];
+    return Array.isArray(data) ? data : data.results;
 }
 
-// GET /jobs/:id/
-export async function getJobById(id: string | number): Promise<Job> {
-    const res = await apiClient.get<Job>(`/jobs/${id}`);
-    return res.data;
-}
-
-// POST /jobs/:id/apply/
-export async function applyToJob(id: string | number) {
-    const res = await apiClient.post(`/jobs/${id}/apply`);
-    return res.data;
-}
-
-// Employer only
-export async function createJob(payload: Partial<Job>) {
+export async function createJob(payload: JobUpsertPayload): Promise<Job> {
     const res = await apiClient.post<Job>("/jobs/", payload);
     return res.data;
 }
 
-export async function updateJob(id: string | number, payload: Partial<Job>) {
-    const res = await apiClient.put<Job>(`/jobs/${id}`, payload);
+export async function updateJob(id: string | number, payload: Partial<JobUpsertPayload>): Promise<Job> {
+    const res = await apiClient.patch<Job>(`/jobs/${id}/`, payload);
     return res.data;
 }
 
-export async function deleteJob(id: string | number) {
-    await apiClient.delete(`/jobs/${id}`);
+export async function deleteJob(id: string | number): Promise<void> {
+    await apiClient.delete(`/jobs/${id}/`);
+}
+
+export async function getJobById(id: string | number): Promise<Job> {
+    const res = await apiClient.get<Job>(`/jobs/${id}/`);
+    return res.data;
 }
