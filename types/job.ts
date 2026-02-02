@@ -2,11 +2,34 @@ export type EmploymentType = "FULL_TIME" | "PART_TIME" | "CONTRACT" | "INTERNSHI
 export type JobType = "REMOTE" | "ONSITE" | "HYBRID";
 export type ExperienceLevel = "ENTRY" | "INTERMEDIATE" | "SENIOR" | "LEAD" | "EXECUTIVE";
 export type JobStatus = "DRAFT" | "ACTIVE" | "CLOSED" | "EXPIRED";
+export type EmployerInfo = {
+    id: number;
+    company_name: string;
+    logo?: string | null;
+    industry?: string | null;
+    company_size?: string | null;
+    website_url?: string | null;
+    is_verified?: boolean;
+};
+
+export type PostedBy = {
+    id: number;
+    company_name: string;
+};
+
+export type Category = {
+    id: number;
+    name: string;
+    slug: string;
+    description?: string | null;
+};
 
 export type Job = {
     id: number | string;
     title: string;
     description: string;
+    employer?: EmployerInfo;
+    posted_by?: PostedBy;
 
     responsibilities?: string[];
     requirements?: string[];
@@ -26,6 +49,8 @@ export type Job = {
     city?: string | null;
     state?: string | null;
     country?: string | null;
+
+    categories?: Category[];
 
     application_deadline?: string | null;
     status?: JobStatus;

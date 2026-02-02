@@ -8,12 +8,6 @@ import { getJobById, deleteJob } from "@/lib/api/jobs";
 import { applyToJob } from "@/lib/api/applications";
 import { useAuth } from "@/context/AuthContext";
 
-function chipClass(kind: "solid" | "soft" = "soft") {
-    return kind === "solid"
-        ? "inline-flex items-center rounded-full bg-emerald-700 px-3 py-1 text-xs font-semibold text-white"
-        : "inline-flex items-center rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold text-emerald-900";
-}
-
 function pretty(v?: string) {
     if (!v) return "";
     return v
@@ -29,6 +23,7 @@ function formatLocation(job: Job) {
 
 function formatSalary(job: Job) {
     if (!job.is_salary_disclosed) return null;
+
     const min = job.salary_min ?? null;
     const max = job.salary_max ?? null;
     const currency = job.currency ?? "";
@@ -43,6 +38,36 @@ function formatSalary(job: Job) {
     return `${currency} up to ${fmt(max as number)}`;
 }
 
+function Chip({
+    children,
+    kind = "soft",
+}: {
+    children: React.ReactNode;
+    kind?: "solid" | "soft";
+}) {
+    const base = "inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold";
+    const soft = "bg-emerald-100 text-emerald-900";
+    const solid = "bg-emerald-700 text-white";
+    return <span className={`${base} ${kind === "solid" ? solid : soft}`}>{children}</span>;
+}
+
+function ListBlock({ title, items }: { title: string; items?: string[] }) {
+    if (!items || items.length === 0) return null;
+    return (
+        <section className="rounded-2xl border border-slate-200 bg-slate-50 p-5">
+            <h3 className="text-sm font-semibold text-slate-900">{title}</h3>
+            <ul className="mt-3 space-y-2 text-sm text-slate-700">
+                {items.map((t, idx) => (
+                    <li key={idx} className="flex gap-2">
+                        <span className="mt-0.5 text-emerald-700">•</span>
+                        <span>{t}</span>
+                    </li>
+                ))}
+            </ul>
+        </section>
+    );
+}
+
 export default function JobDetailClient() {
     const { user, isAuthenticated } = useAuth();
     const params = useParams();
@@ -52,8 +77,8 @@ export default function JobDetailClient() {
     const [job, setJob] = useState<Job | null>(null);
     const [loading, setLoading] = useState(true);
 
-    // Apply state
-    const [coverLetter, setCoverLetter] = useState("");
+    // Apply
+    const [note, setNote] = useState("");
     const [applying, setApplying] = useState(false);
     const [applyMsg, setApplyMsg] = useState<string | null>(null);
 
@@ -68,6 +93,8 @@ export default function JobDetailClient() {
             try {
                 const data = await getJobById(id);
                 if (mounted) setJob(data);
+            } catch (err) {
+                if (mounted) setJob(null);
             } finally {
                 if (mounted) setLoading(false);
             }
@@ -96,9 +123,10 @@ export default function JobDetailClient() {
 
         setApplying(true);
         try {
-            await applyToJob(id, coverLetter.trim() ? { resume: coverLetter.trim() } : {});
-            setApplyMsg("Application submitted successfully");
-            setCoverLetter("");
+            // You mentioned your backend wants "resume" field. Keep it.
+            await applyToJob(id, note.trim() ? { resume: note.trim() } : {});
+            setApplyMsg("Application submitted successfully ✅");
+            setNote("");
         } catch (err: any) {
             const data = err?.response?.data;
             const msg =
@@ -119,7 +147,7 @@ export default function JobDetailClient() {
 
         try {
             await deleteJob(id);
-            router.push("/");
+            router.push("/"); // or /jobs
         } catch (err: any) {
             alert(err?.message || "Failed to delete job");
         }
@@ -128,10 +156,8 @@ export default function JobDetailClient() {
     if (loading) {
         return (
             <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white px-4 py-8">
-                <div className="mx-auto max-w-5xl">
-                    <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
-                        <p className="text-sm text-slate-600">Loading job...</p>
-                    </div>
+                <div className="mx-auto max-w-5xl rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+                    <p className="text-sm text-slate-600">Loading job...</p>
                 </div>
             </div>
         );
@@ -140,17 +166,24 @@ export default function JobDetailClient() {
     if (!job) {
         return (
             <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white px-4 py-8">
-                <div className="mx-auto max-w-5xl">
-                    <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
-                        <p className="text-sm font-medium text-slate-900">Job not found.</p>
-                        <Link href="/" className="mt-3 inline-flex text-sm text-emerald-700 hover:underline">
-                            ← Back to jobs
-                        </Link>
-                    </div>
+                <div className="mx-auto max-w-5xl rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+                    <p className="text-sm font-medium text-slate-900">Job not found.</p>
+                    <Link href="/" className="mt-3 inline-flex text-sm text-emerald-700 hover:underline">
+                        ← Back to jobs
+                    </Link>
                 </div>
             </div>
         );
     }
+
+    const companyName =
+        (job as any).employer?.company_name ||
+        (job as any).posted_by?.company_name ||
+        (job as any).company_name ||
+        "Company";
+
+    const companyLogo = (job as any).employer?.logo as string | undefined;
+    const isVerified = Boolean((job as any).employer?.is_verified);
 
     return (
         <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white px-4 py-8">
@@ -180,29 +213,35 @@ export default function JobDetailClient() {
                 </div>
 
                 <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-                    {/* Main details */}
+                    {/* Main */}
                     <div className="lg:col-span-2">
                         <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
-                            <div className="flex items-start justify-between gap-4">
-                                <div>
+                            <div className="flex items-start gap-4">
+                                <div className="grid h-14 w-14 place-items-center overflow-hidden rounded-2xl bg-slate-900 text-white">
+                                    {companyLogo ? (
+                                        // eslint-disable-next-line @next/next/no-img-element
+                                        <img src={companyLogo} alt={companyName} className="h-full w-full object-cover" />
+                                    ) : (
+                                        <span className="text-lg font-semibold">{companyName.charAt(0).toUpperCase()}</span>
+                                    )}
+                                </div>
+
+                                <div className="min-w-0 flex-1">
                                     <h1 className="text-balance text-2xl font-semibold tracking-tight text-slate-900 sm:text-3xl">
                                         {job.title}
                                     </h1>
+
                                     <p className="mt-1 text-sm text-slate-600">
-                                        {job.country ?? (job as any).country ?? "Company"} • {location}
+                                        {companyName} • {location} {isVerified ? <span className="ml-2 text-emerald-700">✔ Verified</span> : null}
                                     </p>
 
                                     <div className="mt-4 flex flex-wrap gap-2">
-                                        {job.job_type && <span className={chipClass("solid")}>{pretty(job.job_type)}</span>}
-                                        {job.employment_type && <span className={chipClass()}>{pretty(job.employment_type)}</span>}
-                                        {job.experience_level && <span className={chipClass()}>{pretty(job.experience_level)}</span>}
-                                        {job.status && <span className={chipClass()}>{pretty(job.status)}</span>}
-                                        {salary && <span className={chipClass()}>{salary}</span>}
-                                        {job.application_deadline && (
-                                            <span className={chipClass()}>
-                                                Deadline: {job.application_deadline}
-                                            </span>
-                                        )}
+                                        {job.job_type && <Chip kind="solid">{pretty(job.job_type)}</Chip>}
+                                        {job.employment_type && <Chip>{pretty(job.employment_type)}</Chip>}
+                                        {job.experience_level && <Chip>{pretty(job.experience_level)}</Chip>}
+                                        {job.status && <Chip>{pretty(job.status)}</Chip>}
+                                        {salary && <Chip>{salary}</Chip>}
+                                        {job.application_deadline && <Chip>Deadline: {job.application_deadline}</Chip>}
                                     </div>
                                 </div>
                             </div>
@@ -215,30 +254,36 @@ export default function JobDetailClient() {
                                 </p>
                             </section>
 
-                            <TwoColLists job={job} />
+                            {/* Lists */}
+                            <div className="mt-8 grid grid-cols-1 gap-6 sm:grid-cols-2">
+                                <ListBlock title="Responsibilities" items={job.responsibilities} />
+                                <ListBlock title="Requirements" items={job.requirements} />
+                                <ListBlock title="Nice to have" items={job.nice_to_have} />
+                                <ListBlock title="Benefits" items={job.benefits} />
+                            </div>
                         </div>
                     </div>
 
-                    {/* Apply card */}
+                    {/* Apply */}
                     <div className="lg:col-span-1">
                         <div className="sticky top-24 rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
                             <h3 className="text-sm font-semibold text-slate-900">Apply for this role</h3>
                             <p className="mt-1 text-sm text-slate-600">
                                 {isAuthenticated
                                     ? isCandidate
-                                        ? "Add an optional cover letter and submit your application."
+                                        ? "Add an optional note and submit your application."
                                         : "You are logged in as an employer."
                                     : "Login to apply for this job."}
                             </p>
 
                             <div className="mt-4">
-                                <label className="text-xs font-medium text-slate-700">Cover letter (optional)</label>
+                                <label className="text-xs font-medium text-slate-700">Note / Resume field (optional)</label>
                                 <textarea
-                                    value={coverLetter}
-                                    onChange={(e) => setCoverLetter(e.target.value)}
+                                    value={note}
+                                    onChange={(e) => setNote(e.target.value)}
                                     rows={6}
                                     className="mt-2 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none focus:border-emerald-300 focus:bg-white focus:ring-4 focus:ring-emerald-100"
-                                    placeholder="Write a brief note to the employer..."
+                                    placeholder="Write a brief note..."
                                     disabled={!isAuthenticated || !isCandidate}
                                 />
                             </div>
@@ -270,34 +315,5 @@ export default function JobDetailClient() {
                 </div>
             </div>
         </div>
-    );
-}
-
-function TwoColLists({ job }: { job: Job }) {
-    return (
-        <div className="mt-8 grid grid-cols-1 gap-6 sm:grid-cols-2">
-            <ListBlock title="Responsibilities" items={job.responsibilities} />
-            <ListBlock title="Requirements" items={job.requirements} />
-            <ListBlock title="Nice to have" items={job.nice_to_have} />
-            <ListBlock title="Benefits" items={job.benefits} />
-        </div>
-    );
-}
-
-function ListBlock({ title, items }: { title: string; items?: string[] }) {
-    if (!items || items.length === 0) return null;
-
-    return (
-        <section className="rounded-2xl border border-slate-200 bg-slate-50 p-5">
-            <h3 className="text-sm font-semibold text-slate-900">{title}</h3>
-            <ul className="mt-3 space-y-2 text-sm text-slate-700">
-                {items.map((t, idx) => (
-                    <li key={idx} className="flex gap-2">
-                        <span className="mt-0.5 text-emerald-700">•</span>
-                        <span>{t}</span>
-                    </li>
-                ))}
-            </ul>
-        </section>
     );
 }

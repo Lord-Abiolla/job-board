@@ -1,7 +1,7 @@
 import Link from "next/link";
 import type { Job } from "@/types/job";
 
-export default function JobCard({ job, href }: { job: Job; href: string }) {
+export default function JobCard({ job, href = `/jobs/${job.id}/` }: { job: Job; href?: string }) {
     const salaryText = formatSalary(job);
     const deadlineText = job.application_deadline ? formatDate(job.application_deadline) : null;
 
@@ -118,8 +118,6 @@ function Badge({
     return <span className={`${base} ${variant === "soft" ? soft : solid}`}>{children}</span>;
 }
 
-/** ---------- helpers ---------- **/
-
 function getAvatarLetter(job: Job) {
     const source =
         job.country ||
@@ -139,7 +137,6 @@ function formatLocation(job: Job) {
 }
 
 function formatDate(iso: string) {
-    // iso is YYYY-MM-DD
     try {
         const d = new Date(iso);
         return d.toLocaleDateString(undefined, { year: "numeric", month: "short", day: "2-digit" });
