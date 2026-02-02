@@ -36,7 +36,16 @@ function hasToken() {
     return Boolean(localStorage.getItem("access_token"));
 }
 
-/** --- Persist user helpers --- */
+function mergeUser(prev: User | null, next: User): User {
+    return {
+        ...prev,
+        ...next,
+        first_name: next.first_name ?? prev?.first_name ?? "",
+        last_name: next.last_name ?? prev?.last_name ?? "",
+    } as User;
+}
+
+
 function readStoredUser(): User | null {
     if (typeof window === "undefined") return null;
     const raw = localStorage.getItem("auth_user");
@@ -59,13 +68,19 @@ function clearStoredUser() {
 }
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-    // ✅ Start with stored user so UI shows name immediately after refresh
-    const [user, setUser] = useState<User | null>(() => readStoredUser());
+    const [user, setUser] = useState<User | null>(null);
+    const [hydrated, setHydrated] = useState(false);
     const [loading, setLoading] = useState(true);
 
-    const isAuthenticated = !!user || hasToken();
+    useEffect(() => {
+        setHydrated(true);
 
-    // Hydrate user when app loads (page refresh, revisit, etc.)
+        const stored = readStoredUser();
+        if (stored) setUser(stored);
+    }, []);
+
+    const isAuthenticated = hydrated && !!user;
+
     useEffect(() => {
         let mounted = true;
 
@@ -78,15 +93,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                     return;
                 }
 
-                // ✅ fetch current user if token exists
                 const me = (await getCurrentUser()) as User;
 
                 if (mounted) {
-                    setUser(me);
-                    storeUser(me);
+                    const merged = mergeUser(readStoredUser(), me);
+                    setUser(merged);
+                    storeUser(merged);
+
                 }
             } catch (err) {
-                // Token invalid/expired and refresh failed
                 apiLogout();
                 clearStoredUser();
                 if (mounted) setUser(null);
@@ -111,8 +126,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             }
 
             const me = (await getCurrentUser()) as User;
-            setUser(me);
-            storeUser(me);
+            const merged = mergeUser(readStoredUser(), me);
+            setUser(merged);
+            storeUser(merged);
+
         } catch (err) {
             apiLogout();
             clearStoredUser();
@@ -126,7 +143,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setLoading(true);
         try {
             const data = await apiLogin(email, password);
-            // backend returns { user, access, refresh }
             const me = data.user as User;
             setUser(me);
             storeUser(me);
@@ -139,7 +155,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setLoading(true);
         try {
             await apiRegister(payload);
-            // auto-login and store user
             await login(payload.email, payload.password);
         } finally {
             setLoading(false);
