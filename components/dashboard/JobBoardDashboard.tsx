@@ -5,9 +5,10 @@ import Select from "./Select";
 import JobCard from "../jobs/JobCard";
 import type { Job } from "@/types/job";
 import { getJobs } from "@/lib/api/jobs";
+import { useAuth } from "@/context/AuthContext";
 import { JobCardSkeleton } from "../jobs/JobCard";
 import { useEffect, useMemo, useState } from "react";
-
+import ProfileMenu from "./ProfileMenu";
 
 type DatePostedFilter = "any" | "24h" | "7d" | "30d";
 type JobTypeFilter = "any" | "onsite" | "remote" | "hybrid";
@@ -29,6 +30,8 @@ export default function JobBoardDashboard() {
     const [jobType, setJobType] = useState<JobTypeFilter>("any");
     const [employment, setEmployment] = useState<EmploymentFilter>("any");
     const [datePosted, setDatePosted] = useState<DatePostedFilter>("any");
+
+    const { user, loading: authLoading, logout } = useAuth();
 
     // Debounce (Keeps UI snappy)
     const [debounceQuery, setDebounceQuery] = useState(query);
@@ -104,14 +107,9 @@ export default function JobBoardDashboard() {
                         </nav>
 
                         <div className="flex items-center gap-2">
-                            <button
-                                className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 text-sm text-white hover:bg-white/15 focus:ring-2 focus:ring-emerald-400/60 cursor-pointer"
-                                aria-label="Account"
-                            >
-                                <span className="hidden sm:inline">Account</span>
-                                <span className="grid h-8 w-8 place-items-center rounded-full bg-white/10">👤</span>
-                            </button>
+                            <ProfileMenu />
                         </div>
+
                     </div>
                 </header>
 
