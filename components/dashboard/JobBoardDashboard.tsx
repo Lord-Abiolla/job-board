@@ -21,8 +21,8 @@ function daysAgo(dateIso: string) {
     return diffMs / (1000 * 60 * 24);
 }
 
-export default function JobBoardDashboard() {
-    const [jobs, setJobs] = useState<Job[]>([]);
+export default function JobBoardDashboard({ initialJobs }: { initialJobs: Job[] }) {
+    const [jobs, setJobs] = useState<Job[]>(initialJobs);
     const [loading, setLoading] = useState(true);
 
     // Controls
@@ -39,24 +39,6 @@ export default function JobBoardDashboard() {
         const t = setTimeout(() => setDebounceQuery(query), 250);
         return () => clearTimeout(t);
     }, [query]);
-
-    useEffect(() => {
-        let mounted = true;
-
-        (async () => {
-            setLoading(true);
-            try {
-                const data = await getJobs();
-                if (mounted) setJobs(data);
-            } finally {
-                if (mounted) setLoading(false);
-            }
-        })();
-
-        return () => {
-            mounted = false;
-        };
-    }, []);
 
     const filtered = useMemo(() => {
         return jobs.filter((j) => {
