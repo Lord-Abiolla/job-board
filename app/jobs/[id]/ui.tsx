@@ -68,16 +68,18 @@ function ListBlock({ title, items }: { title: string; items?: string[] }) {
     );
 }
 
-export default function JobDetailClient() {
+type JobDetailUIProps = {
+    job?: Job | null;
+};
+
+export default function JobDetailClient({ job: initialJob }: JobDetailUIProps) {
     const { user, isAuthenticated } = useAuth();
     const params = useParams();
     const router = useRouter();
     const id = params?.id as string;
 
-    const [job, setJob] = useState<Job | null>(null);
-    const [loading, setLoading] = useState(true);
-
-    // Apply
+    const [job, setJob] = useState<Job | null>(initialJob ?? null);
+    const [loading, setLoading] = useState(!initialJob);
     const [note, setNote] = useState("");
     const [applying, setApplying] = useState(false);
     const [applyMsg, setApplyMsg] = useState<string | null>(null);
@@ -86,6 +88,8 @@ export default function JobDetailClient() {
     const isCandidate = user?.role === "CANDIDATE";
 
     useEffect(() => {
+        if (initialJob != null) return;
+
         let mounted = true;
 
         (async () => {
@@ -103,7 +107,7 @@ export default function JobDetailClient() {
         return () => {
             mounted = false;
         };
-    }, [id]);
+    }, [id, initialJob]);
 
     const salary = useMemo(() => (job ? formatSalary(job) : null), [job]);
     const location = useMemo(() => (job ? formatLocation(job) : ""), [job]);
@@ -123,9 +127,8 @@ export default function JobDetailClient() {
 
         setApplying(true);
         try {
-            // You mentioned your backend wants "resume" field. Keep it.
             await applyToJob(id, note.trim() ? { resume: note.trim() } : {});
-            setApplyMsg("Application submitted successfully ✅");
+            setApplyMsg("Application submitted successfully");
             setNote("");
         } catch (err: any) {
             const data = err?.response?.data;
@@ -147,7 +150,7 @@ export default function JobDetailClient() {
 
         try {
             await deleteJob(id);
-            router.push("/"); // or /jobs
+            router.push("/");
         } catch (err: any) {
             alert(err?.message || "Failed to delete job");
         }
@@ -188,7 +191,6 @@ export default function JobDetailClient() {
     return (
         <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white px-4 py-8">
             <div className="mx-auto max-w-5xl">
-                {/* Top bar */}
                 <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                     <Link href="/" className="text-sm font-medium text-emerald-800 hover:underline">
                         ← Back to jobs
@@ -213,13 +215,11 @@ export default function JobDetailClient() {
                 </div>
 
                 <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-                    {/* Main */}
                     <div className="lg:col-span-2">
                         <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
                             <div className="flex items-start gap-4">
                                 <div className="grid h-14 w-14 place-items-center overflow-hidden rounded-2xl bg-slate-900 text-white">
                                     {companyLogo ? (
-                                        // eslint-disable-next-line @next/next/no-img-element
                                         <img src={companyLogo} alt={companyName} className="h-full w-full object-cover" />
                                     ) : (
                                         <span className="text-lg font-semibold">{companyName.charAt(0).toUpperCase()}</span>
@@ -246,7 +246,6 @@ export default function JobDetailClient() {
                                 </div>
                             </div>
 
-                            {/* Description */}
                             <section className="mt-8">
                                 <h2 className="text-sm font-semibold text-slate-900">Description</h2>
                                 <p className="mt-2 whitespace-pre-line text-sm leading-6 text-slate-700">
@@ -254,7 +253,6 @@ export default function JobDetailClient() {
                                 </p>
                             </section>
 
-                            {/* Lists */}
                             <div className="mt-8 grid grid-cols-1 gap-6 sm:grid-cols-2">
                                 <ListBlock title="Responsibilities" items={job.responsibilities} />
                                 <ListBlock title="Requirements" items={job.requirements} />
@@ -264,7 +262,6 @@ export default function JobDetailClient() {
                         </div>
                     </div>
 
-                    {/* Apply */}
                     <div className="lg:col-span-1">
                         <div className="sticky top-24 rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
                             <h3 className="text-sm font-semibold text-slate-900">Apply for this role</h3>
