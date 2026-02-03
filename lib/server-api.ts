@@ -1,4 +1,4 @@
-export async function serverFetch(path: string) {
+export async function serverFetch<T = unknown>(path: string): Promise<T> {
     const res = await fetch(
         `${process.env.API_BASE_URL}${path}`,
         { cache: "no-store" }

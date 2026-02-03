@@ -21,8 +21,8 @@ function daysAgo(dateIso: string) {
     return diffMs / (1000 * 60 * 24);
 }
 
-export default function JobBoardDashboard({ initialJobs }: { initialJobs: Job[] }) {
-    const [jobs, setJobs] = useState<Job[]>(initialJobs);
+export default function JobBoardDashboard({ initialJobs }: { initialJobs?: Job[] }) {
+    const [jobs, setJobs] = useState<Job[]>(initialJobs ?? []);
     const [loading, setLoading] = useState(true);
 
     // Controls
@@ -40,6 +40,27 @@ export default function JobBoardDashboard({ initialJobs }: { initialJobs: Job[] 
         return () => clearTimeout(t);
     }, [query]);
 
+    useEffect(() => {
+        let mounted = true;
+
+        (async () => {
+            setLoading(jobs.length === 0);
+
+            try {
+                const data = await getJobs();
+                if (mounted) setJobs(data);
+            } catch {
+            } finally {
+                if (mounted) setLoading(false);
+            }
+        })();
+
+        return () => {
+            mounted = false;
+        };
+    }, []);
+
+
     const filtered = useMemo(() => {
         return jobs.filter((j) => {
             const matchesQuery =
@@ -49,7 +70,9 @@ export default function JobBoardDashboard({ initialJobs }: { initialJobs: Job[] 
             const matchesJobType = jobType === "any" || j.job_type.toLowerCase() === jobType;
             const matchesEmployment = employment === "any" || j.employment_type.toLowerCase() === employment;
 
-            const ageDays = j.createdAt ? daysAgo(j.createdAt) : 9999;
+            const created = (j as any).created_at ?? (j as any).createdAt;
+            const ageDays = created ? daysAgo(created) : 9999;
+
             const matchesDate =
                 datePosted === "any" ||
                 (datePosted === "24h" && ageDays <= 1) ||
