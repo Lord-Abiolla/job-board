@@ -1,7 +1,10 @@
 import axios from "axios";
 import { refreshToken, logout } from "./auth";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL;
+const API_BASE =
+    typeof window === "undefined"
+        ? process.env.API_BASE_URL
+        : process.env.NEXT_PUBLIC_API_BASE_URL;
 
 export const apiClient = axios.create({
     baseURL: API_BASE,
