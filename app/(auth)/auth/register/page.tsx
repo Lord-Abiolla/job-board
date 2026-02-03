@@ -1,3 +1,5 @@
+export const dynamic = "force-dynamic";
+
 import AuthShell from "@/components/auth/AuthShell";
 import RegisterForm from "@/components/auth/RegisterForm";
 
