@@ -20,6 +20,7 @@ export default function EditProfileClient() {
     const [phone, setPhone] = useState("");
     const [headline, setHeadline] = useState("");
     const [about, setAbout] = useState("");
+    const [date, setDate] = useState("");
     const [linkedin, setLinkedin] = useState("");
     const [github, setGithub] = useState("");
     const [twitter, setTwitter] = useState("");
@@ -45,13 +46,16 @@ export default function EditProfileClient() {
                 if (!mounted) return;
                 setProfile(data);
 
-                setPhone(data.phone ?? "");
-                setHeadline(data.headline ?? "");
-                setAbout(data.about ?? "");
-                setLinkedin(data.linkedin ?? "");
-                setGithub(data.github ?? "");
-                setTwitter(data.twitter ?? "");
-                setWebsite(data.website ?? "");
+                if ("phone" in data) {
+                    setPhone(data.phone ?? "");
+                    setHeadline(data.headline ?? "");
+                    setAbout(data.about ?? "");
+                    setDate(data.date_of_birth ?? "");
+                    setLinkedin(data.linkedin ?? "");
+                    setGithub(data.github ?? "");
+                    setTwitter(data.twitter ?? "");
+                    setWebsite(data.website ?? "");
+                }
             } finally {
                 if (mounted) setLoading(false);
             }
@@ -89,7 +93,7 @@ export default function EditProfileClient() {
 
             const updated = await updateMyProfile(form);
             setProfile(updated);
-            setMsg("Profile updated successfully ✅");
+            setMsg("Profile updated successfully");
             router.push("/profile");
         } catch (err: any) {
             const data = err?.response?.data;
@@ -131,6 +135,7 @@ export default function EditProfileClient() {
                     <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2">
                         <Field label="Phone" value={phone} onChange={setPhone} placeholder="+123..." />
                         <Field label="Headline" value={headline} onChange={setHeadline} placeholder="Senior Software Engineer" />
+                        <Field label="DateOfBirth" value={date} onChange={setDate} type="date" placeholder="1990 - 01 - 15" />
                         <Field label="LinkedIn" value={linkedin} onChange={setLinkedin} placeholder="https://linkedin.com/in/..." />
                         <Field label="GitHub" value={github} onChange={setGithub} placeholder="https://github.com/..." />
                         <Field label="Twitter" value={twitter} onChange={setTwitter} placeholder="https://twitter.com/..." />
@@ -177,17 +182,20 @@ function Field({
     value,
     onChange,
     placeholder,
+    type = 'text',
 }: {
     label: string;
     value: string;
     onChange: (v: string) => void;
     placeholder?: string;
+    type?: string;
 }) {
     return (
         <div>
             <label className="text-sm font-medium text-slate-700">{label}</label>
             <input
                 value={value}
+                type={type}
                 onChange={(e) => onChange(e.target.value)}
                 placeholder={placeholder}
                 className="mt-2 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none focus:border-emerald-300 focus:bg-white focus:ring-4 focus:ring-emerald-100"
