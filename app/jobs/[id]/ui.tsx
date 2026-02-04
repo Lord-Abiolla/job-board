@@ -80,9 +80,12 @@ export default function JobDetailClient({ job: initialJob }: JobDetailUIProps) {
 
     const [job, setJob] = useState<Job | null>(initialJob ?? null);
     const [loading, setLoading] = useState(!initialJob);
-    const [note, setNote] = useState("");
     const [applying, setApplying] = useState(false);
     const [applyMsg, setApplyMsg] = useState<string | null>(null);
+    const [coverLetter, setCoverLetter] = useState("");
+    const [resumeFile, setResumeFile] = useState<File | null>(null);
+    const [expectedSalary, setExpectedSalary] = useState<string>("");
+    const [availableFrom, setAvailableFrom] = useState<string>("");
 
     const isEmployer = user?.role === "EMPLOYER";
     const isCandidate = user?.role === "CANDIDATE";
@@ -125,16 +128,30 @@ export default function JobDetailClient({ job: initialJob }: JobDetailUIProps) {
             return;
         }
 
+        if (!coverLetter.trim()) {
+            setApplyMsg("Cover letter is required.");
+            return;
+        }
+
         setApplying(true);
         try {
-            await applyToJob(id, note.trim() ? { resume: note.trim() } : {});
-            setApplyMsg("Application submitted successfully");
-            setNote("");
+            await applyToJob(id, {
+                cover_letter: coverLetter.trim(),
+                resume: resumeFile,
+                expected_salary: expectedSalary.trim() || null,
+                available_from: availableFrom || null,
+            });
+
+            setApplyMsg("Application submitted successfully.");
+            setCoverLetter("");
+            setResumeFile(null);
+            setExpectedSalary("");
+            setAvailableFrom("");
         } catch (err: any) {
             const data = err?.response?.data;
             const msg =
                 data?.detail ||
-                (typeof data === "object" ? JSON.stringify(data) : null) ||
+                (typeof data === "object" ? JSON.stringify(data, null, 2) : null) ||
                 err.message ||
                 "Failed to apply";
             setApplyMsg(msg);
@@ -273,32 +290,71 @@ export default function JobDetailClient({ job: initialJob }: JobDetailUIProps) {
                                     : "Login to apply for this job."}
                             </p>
 
-                            <div className="mt-4">
-                                <label className="text-xs font-medium text-slate-700">Note / Resume field (optional)</label>
-                                <textarea
-                                    value={note}
-                                    onChange={(e) => setNote(e.target.value)}
-                                    rows={6}
-                                    className="mt-2 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none focus:border-emerald-300 focus:bg-white focus:ring-4 focus:ring-emerald-100"
-                                    placeholder="Write a brief note..."
-                                    disabled={!isAuthenticated || !isCandidate}
-                                />
+                            <div className="mt-4 space-y-4">
+                                <div>
+                                    <label className="text-xs font-medium text-slate-700">Cover letter *</label>
+                                    <textarea
+                                        value={coverLetter}
+                                        onChange={(e) => setCoverLetter(e.target.value)}
+                                        rows={6}
+                                        className="mt-2 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none focus:border-emerald-300 focus:bg-white focus:ring-4 focus:ring-emerald-100"
+                                        placeholder="Write your cover letter..."
+                                        disabled={!isAuthenticated || !isCandidate}
+                                    />
+                                </div>
+
+                                <div>
+                                    <label className="text-xs font-medium text-slate-700">Resume (optional)</label>
+                                    <input
+                                        type="file"
+                                        accept=".pdf,.doc,.docx"
+                                        className="mt-2 block w-full text-sm text-slate-700 file:mr-4 file:rounded-xl file:border-0 file:bg-emerald-50 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-emerald-800 hover:file:bg-emerald-100"
+                                        disabled={!isAuthenticated || !isCandidate}
+                                        onChange={(e) => setResumeFile(e.target.files?.[0] ?? null)}
+                                    />
+                                    {resumeFile ? (
+                                        <p className="mt-2 text-xs text-slate-600">Selected: {resumeFile.name}</p>
+                                    ) : null}
+                                </div>
+
+                                <div>
+                                    <label className="text-xs font-medium text-slate-700">Expected salary</label>
+                                    <input
+                                        type="number"
+                                        inputMode="numeric"
+                                        value={expectedSalary}
+                                        onChange={(e) => setExpectedSalary(e.target.value)}
+                                        className="mt-2 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none focus:border-emerald-300 focus:bg-white focus:ring-4 focus:ring-emerald-100"
+                                        placeholder="120000"
+                                        disabled={!isAuthenticated || !isCandidate}
+                                    />
+                                </div>
+
+                                <div>
+                                    <label className="text-xs font-medium text-slate-700">Available from</label>
+                                    <input
+                                        type="date"
+                                        value={availableFrom}
+                                        onChange={(e) => setAvailableFrom(e.target.value)}
+                                        className="mt-2 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none focus:border-emerald-300 focus:bg-white focus:ring-4 focus:ring-emerald-100"
+                                        disabled={!isAuthenticated || !isCandidate}
+                                    />
+                                </div>
                             </div>
 
                             {applyMsg && (
-                                <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-800 whitespace-pre-line">
+                                <div className="mt-4 rounded-2xl border border-slate-200 bg-green-100 px-4 py-3 font-bold text-sm text-green-800 whitespace-pre-line">
                                     {applyMsg}
                                 </div>
                             )}
 
                             <button
                                 onClick={onApply}
-                                disabled={applying || (isAuthenticated && !isCandidate)}
+                                disabled={applying || !isAuthenticated || !isCandidate || !coverLetter.trim()}
                                 className="mt-5 w-full rounded-2xl bg-emerald-700 px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-800 disabled:opacity-60"
                             >
-                                {applying ? "Applying..." : isAuthenticated ? "Submit Application" : "Login to Apply"}
+                                {applying ? "Applying..." : "Submit Application"}
                             </button>
-
                             {!isAuthenticated && (
                                 <Link
                                     href="/auth/login"
