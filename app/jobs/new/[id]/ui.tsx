@@ -57,6 +57,11 @@ export default function JobDetailClient() {
     const [applying, setApplying] = useState(false);
     const [applyMsg, setApplyMsg] = useState<string | null>(null);
 
+    // Optional fields for application payload (no UI yet)
+    const resumeFile: File | null = null;
+    const expectedSalary: string | number | null = null;
+    const availableFrom: string | null = null;
+
     const isEmployer = user?.role === "EMPLOYER";
     const isCandidate = user?.role === "CANDIDATE";
 
@@ -94,9 +99,20 @@ export default function JobDetailClient() {
             return;
         }
 
+        if (!coverLetter.trim()) {
+            setApplyMsg("Cover letter is required.");
+            return;
+        }
+
         setApplying(true);
         try {
-            await applyToJob(id, coverLetter.trim() ? { resume: coverLetter.trim() } : {});
+            await applyToJob(id, {
+                cover_letter: coverLetter.trim(),
+                resume: resumeFile,
+                expected_salary: expectedSalary || null,
+                available_from: availableFrom || null,
+            });
+
             setApplyMsg("Application submitted successfully");
             setCoverLetter("");
         } catch (err: any) {
@@ -111,6 +127,7 @@ export default function JobDetailClient() {
             setApplying(false);
         }
     }
+
 
     async function onDelete() {
         if (!isEmployer) return;
