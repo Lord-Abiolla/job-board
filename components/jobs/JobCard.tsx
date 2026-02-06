@@ -64,7 +64,7 @@ export default function JobCard({ job, href = `/jobs/${job.id}/` }: { job: Job; 
 
                         {deadlineText && (
                             <span className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-medium text-slate-700">
-                                ⏳ {deadlineText}
+                                {deadlineText}
                             </span>
                         )}
                     </div>

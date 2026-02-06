@@ -1,33 +1,97 @@
 "use client";
 
-import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
-import type { UserProfile } from "@/types/profile";
-import { getMyProfile, updateMyProfile } from "@/lib/api/profile";
 
-export default function EditProfileClient() {
+import { getMyProfile, updateCandidateProfile, updateEmployerProfile } from "@/lib/api/profile";
+import type {
+    CandidateProfile,
+    CandidateProfileFlat,
+    EmployerProfile,
+    ProfileResponse,
+} from "@/types/profile";
+import { isCandidateProfile, isEmployerProfile } from "@/types/profile";
+import CandidateProfileForm from "@/components/profile/CandidateProfileForm";
+import EmployerProfileForm from "@/components/profile/EmployerProfileForm";
+
+function normalizeCandidateProfile(input: CandidateProfile | CandidateProfileFlat): CandidateProfile {
+    if ("user" in input) {
+        // Already the nested candidate shape
+        return input;
+    }
+
+    const name = (input.name ?? "").trim();
+    const [firstName, ...rest] = name.split(" ");
+    const lastName = rest.join(" ").trim();
+
+    return {
+        id: input.id,
+        user: {
+            id: input.id,
+            email: input.email,
+            first_name: firstName || input.email,
+            last_name: lastName,
+            role: "CANDIDATE",
+        },
+        phone: input.phone,
+        gender: input.gender,
+        date_of_birth: input.date_of_birth,
+        headline: input.headline,
+        about: input.about,
+        linkedin: input.social_links?.linkedin ?? null,
+        github: input.social_links?.github ?? null,
+        twitter: input.social_links?.twitter ?? null,
+        website: input.social_links?.website ?? null,
+        profile_picture: input.picture ?? null,
+        resume: input.resume_url ?? null,
+        is_verified: input.is_verified,
+        verified: input.verified,
+        profile_completion: input.profile_completion,
+        completion: input.completion,
+    };
+}
+
+// ---- helpers from above ----
+function buildCandidateForm(payload: any) {
+    const form = new FormData();
+    if (payload.first_name !== undefined) form.append("first_name", payload.first_name);
+    if (payload.last_name !== undefined) form.append("last_name", payload.last_name);
+    if (payload.phone !== undefined) form.append("phone", payload.phone);
+    if (payload.gender !== undefined) form.append("gender", payload.gender);
+    if (payload.date_of_birth !== undefined) form.append("date_of_birth", payload.date_of_birth);
+    if (payload.headline !== undefined) form.append("headline", payload.headline);
+    if (payload.about !== undefined) form.append("about", payload.about);
+    if (payload.website !== undefined) form.append("website", payload.website);
+    if (payload.linkedin !== undefined) form.append("linkedin", payload.linkedin);
+    if (payload.github !== undefined) form.append("github", payload.github);
+    if (payload.twitter !== undefined) form.append("twitter", payload.twitter);
+    if (payload.profile_picture) form.append("profile_picture", payload.profile_picture);
+    if (payload.resume) form.append("resume", payload.resume);
+    return form;
+}
+
+function buildEmployerForm(payload: any) {
+    const form = new FormData();
+    if (payload.name !== undefined) form.append("name", payload.name);
+    if (payload.company_name !== undefined) form.append("company_name", payload.company_name);
+    if (payload.industry !== undefined) form.append("industry", payload.industry);
+    if (payload.city !== undefined) form.append("city", payload.city);
+    if (payload.country !== undefined) form.append("country", payload.country);
+    if (payload.description !== undefined) form.append("description", payload.description);
+    if (payload.website_url !== undefined) form.append("website_url", payload.website_url);
+    if (payload.linkedin_url !== undefined) form.append("linkedin_url", payload.linkedin_url);
+    if (payload.company_logo_url) form.append("company_logo_url", payload.company_logo_url);
+    return form;
+}
+
+export default function ProfileEditClient() {
     const { isAuthenticated, loading: authLoading } = useAuth();
     const router = useRouter();
 
-    const [profile, setProfile] = useState<UserProfile | null>(null);
+    const [candidate, setCandidate] = useState<CandidateProfile | null>(null);
+    const [employer, setEmployer] = useState<EmployerProfile | null>(null);
     const [loading, setLoading] = useState(true);
-    const [saving, setSaving] = useState(false);
-    const [msg, setMsg] = useState<string | null>(null);
-
-    // form fields
-    const [phone, setPhone] = useState("");
-    const [headline, setHeadline] = useState("");
-    const [about, setAbout] = useState("");
-    const [date, setDate] = useState("");
-    const [linkedin, setLinkedin] = useState("");
-    const [github, setGithub] = useState("");
-    const [twitter, setTwitter] = useState("");
-    const [website, setWebsite] = useState("");
-
-    const [profilePic, setProfilePic] = useState<File | null>(null);
-    const [resume, setResume] = useState<File | null>(null);
 
     useEffect(() => {
         if (authLoading) return;
@@ -42,20 +106,25 @@ export default function EditProfileClient() {
         (async () => {
             setLoading(true);
             try {
-                const data = await getMyProfile();
+                const data: ProfileResponse = await getMyProfile();
                 if (!mounted) return;
-                setProfile(data);
 
-                if ("phone" in data) {
-                    setPhone(data.phone ?? "");
-                    setHeadline(data.headline ?? "");
-                    setAbout(data.about ?? "");
-                    setDate(data.date_of_birth ?? "");
-                    setLinkedin(data.linkedin ?? "");
-                    setGithub(data.github ?? "");
-                    setTwitter(data.twitter ?? "");
-                    setWebsite(data.website ?? "");
+                if (isCandidateProfile(data)) {
+                    const normalized = normalizeCandidateProfile(data);
+                    setCandidate(normalized);
+                    setEmployer(null);
+                } else if (isEmployerProfile(data)) {
+                    setEmployer(data);
+                    setCandidate(null);
+                } else {
+                    setCandidate(null);
+                    setEmployer(null);
                 }
+            } catch (e) {
+                console.error("Failed to load profile:", e);
+                if (!mounted) return;
+                setCandidate(null);
+                setEmployer(null);
             } finally {
                 if (mounted) setLoading(false);
             }
@@ -66,53 +135,21 @@ export default function EditProfileClient() {
         };
     }, [isAuthenticated, authLoading, router]);
 
-    const name = useMemo(() => {
-        const f = profile?.user?.first_name?.trim();
-        const l = profile?.user?.last_name?.trim();
-        return [f, l].filter(Boolean).join(" ") || profile?.user?.email || "";
-    }, [profile]);
-
-    async function onSave(e: React.FormEvent) {
-        e.preventDefault();
-        setMsg(null);
-        setSaving(true);
-
-        try {
-            const form = new FormData();
-
-            if (phone.trim()) form.append("phone", phone.trim());
-            if (headline.trim()) form.append("headline", headline.trim());
-            if (about.trim()) form.append("about", about.trim());
-            if (linkedin.trim()) form.append("linkedin", linkedin.trim());
-            if (github.trim()) form.append("github", github.trim());
-            if (twitter.trim()) form.append("twitter", twitter.trim());
-            if (website.trim()) form.append("website", website.trim());
-
-            if (profilePic) form.append("profile_picture", profilePic);
-            if (resume) form.append("resume", resume);
-
-            const updated = await updateMyProfile(form);
-            setProfile(updated);
-            setMsg("Profile updated successfully");
-            router.push("/profile");
-        } catch (err: any) {
-            const data = err?.response?.data;
-            const text =
-                data?.detail ||
-                (typeof data === "object" ? JSON.stringify(data) : null) ||
-                err.message ||
-                "Failed to update profile";
-            setMsg(text);
-        } finally {
-            setSaving(false);
-        }
-    }
-
     if (authLoading || loading) {
         return (
             <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white px-4 py-8">
-                <div className="mx-auto max-w-4xl rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
-                    <p className="text-sm text-slate-600">Loading edit form...</p>
+                <div className="mx-auto max-w-3xl rounded-3xl border border-slate-200 bg-white p-8 shadow-sm">
+                    <p className="text-sm text-slate-600">Loading profile...</p>
+                </div>
+            </div>
+        );
+    }
+
+    if (!candidate && !employer) {
+        return (
+            <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white px-4 py-8">
+                <div className="mx-auto max-w-3xl rounded-3xl border border-slate-200 bg-white p-8 shadow-sm">
+                    <p className="text-sm font-medium text-slate-900">Profile not found.</p>
                 </div>
             </div>
         );
@@ -120,100 +157,29 @@ export default function EditProfileClient() {
 
     return (
         <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white px-4 py-8">
-            <div className="mx-auto max-w-4xl">
-                <div className="mb-6 flex items-center justify-between">
-                    <Link href="/profile" className="text-sm font-medium text-emerald-800 hover:underline">
-                        ← Back to profile
-                    </Link>
-                    <div className="text-sm text-slate-600">Editing: <span className="font-semibold text-slate-900">{name}</span></div>
-                </div>
-
-                <form onSubmit={onSave} className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
-                    <h1 className="text-xl font-semibold text-slate-900">Edit Profile</h1>
-                    <p className="mt-1 text-sm text-slate-600">Update your details and upload files (multipart/form-data).</p>
-
-                    <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2">
-                        <Field label="Phone" value={phone} onChange={setPhone} placeholder="+123..." />
-                        <Field label="Headline" value={headline} onChange={setHeadline} placeholder="Senior Software Engineer" />
-                        <Field label="DateOfBirth" value={date} onChange={setDate} type="date" placeholder="1990 - 01 - 15" />
-                        <Field label="LinkedIn" value={linkedin} onChange={setLinkedin} placeholder="https://linkedin.com/in/..." />
-                        <Field label="GitHub" value={github} onChange={setGithub} placeholder="https://github.com/..." />
-                        <Field label="Twitter" value={twitter} onChange={setTwitter} placeholder="https://twitter.com/..." />
-                        <Field label="Website" value={website} onChange={setWebsite} placeholder="https://example.com" />
-                    </div>
-
-                    <div className="mt-4">
-                        <label className="text-sm font-medium text-slate-700">About</label>
-                        <textarea
-                            value={about}
-                            onChange={(e) => setAbout(e.target.value)}
-                            rows={6}
-                            className="mt-2 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none focus:border-emerald-300 focus:bg-white focus:ring-4 focus:ring-emerald-100"
-                            placeholder="Tell employers about yourself..."
-                        />
-                    </div>
-
-                    <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2">
-                        <FileField label="Profile picture" onFile={setProfilePic} />
-                        <FileField label="Resume (PDF)" onFile={setResume} />
-                    </div>
-
-                    {msg && (
-                        <div className="mt-5 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-800 whitespace-pre-line">
-                            {msg}
-                        </div>
-                    )}
-
-                    <button
-                        type="submit"
-                        disabled={saving}
-                        className="mt-6 w-full rounded-2xl bg-emerald-700 px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-800 disabled:opacity-60"
-                    >
-                        {saving ? "Saving..." : "Save changes"}
-                    </button>
-                </form>
+            <div className="mx-auto max-w-3xl">
+                {candidate ? (
+                    <CandidateProfileForm
+                        initial={candidate}
+                        onSubmit={async (payload) => {
+                            const form = buildCandidateForm(payload);
+                            const updated = await updateCandidateProfile(form);
+                            setCandidate(updated);
+                            router.push("/profile");
+                        }}
+                    />
+                ) : (
+                    <EmployerProfileForm
+                        initial={employer!}
+                        onSubmit={async (payload) => {
+                            const form = buildEmployerForm(payload);
+                            const updated = await updateEmployerProfile(form);
+                            setEmployer(updated);
+                            router.push("/profile");
+                        }}
+                    />
+                )}
             </div>
-        </div>
-    );
-}
-
-function Field({
-    label,
-    value,
-    onChange,
-    placeholder,
-    type = 'text',
-}: {
-    label: string;
-    value: string;
-    onChange: (v: string) => void;
-    placeholder?: string;
-    type?: string;
-}) {
-    return (
-        <div>
-            <label className="text-sm font-medium text-slate-700">{label}</label>
-            <input
-                value={value}
-                type={type}
-                onChange={(e) => onChange(e.target.value)}
-                placeholder={placeholder}
-                className="mt-2 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none focus:border-emerald-300 focus:bg-white focus:ring-4 focus:ring-emerald-100"
-            />
-        </div>
-    );
-}
-
-function FileField({ label, onFile }: { label: string; onFile: (f: File | null) => void }) {
-    return (
-        <div>
-            <label className="text-sm font-medium text-slate-700">{label}</label>
-            <input
-                type="file"
-                onChange={(e) => onFile(e.target.files?.[0] ?? null)}
-                className="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm"
-            />
-            <p className="mt-1 text-xs text-slate-500">Upload a file if you want to replace the existing one.</p>
         </div>
     );
 }
