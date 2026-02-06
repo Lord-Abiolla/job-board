@@ -5,7 +5,17 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import type { Application } from "@/types/application";
-import { listMyApplications } from "@/lib/api/applications";
+import { listApplications } from "@/lib/api/applications";
+
+function chip(status: string) {
+    const base = "inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold";
+    if (status === "PENDING") return `${base} bg-amber-100 text-amber-900`;
+    if (status === "REVIEWED") return `${base} bg-blue-100 text-blue-900`;
+    if (status === "SHORTLISTED") return `${base} bg-violet-100 text-violet-900`;
+    if (status === "ACCEPTED") return `${base} bg-emerald-100 text-emerald-900`;
+    if (status === "REJECTED") return `${base} bg-red-100 text-red-900`;
+    return `${base} bg-slate-100 text-slate-900`;
+}
 
 function label(v?: string | null) {
     if (v === null || v === undefined) return "—";
@@ -13,25 +23,10 @@ function label(v?: string | null) {
     return s.length ? s : "—";
 }
 
-function chip(status: string) {
-    const base = "inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold";
-    if (status === "PENDING") return `${base} bg-amber-100 text-amber-900`;
-    if (status === "REVIEWED") return `${base} bg-blue-100 text-blue-900`;
-    if (status === "ACCEPTED") return `${base} bg-emerald-100 text-emerald-900`;
-    if (status === "REJECTED") return `${base} bg-red-100 text-red-900`;
-    return `${base} bg-slate-100 text-slate-900`;
-}
-
 function fmtDate(iso?: string | null) {
     if (!iso) return "—";
     const d = new Date(iso);
-    if (Number.isNaN(d.getTime())) return iso;
-    return d.toLocaleString();
-}
-
-function fmtMoney(n?: number | null) {
-    if (n === null || n === undefined) return "—";
-    return new Intl.NumberFormat(undefined, { maximumFractionDigits: 0 }).format(n);
+    return Number.isNaN(d.getTime()) ? iso : d.toLocaleDateString();
 }
 
 export default function ApplicationsPage() {
@@ -52,13 +47,18 @@ export default function ApplicationsPage() {
             return;
         }
 
+        if (!isCandidate) {
+            router.push("/");
+            return;
+        }
+
         let mounted = true;
 
         (async () => {
             setLoading(true);
             setErr(null);
             try {
-                const data = await listMyApplications();
+                const data = await listApplications();
                 if (mounted) setItems(Array.isArray(data) ? data : []);
             } catch (e: any) {
                 const msg =
@@ -75,9 +75,9 @@ export default function ApplicationsPage() {
         return () => {
             mounted = false;
         };
-    }, [authLoading, isAuthenticated, router]);
+    }, [authLoading, isAuthenticated, isCandidate, router]);
 
-    const sorted = useMemo(() => {
+    const rows = useMemo(() => {
         return [...items].sort((a, b) => {
             const da = new Date(a.applied_at ?? a.created_at).getTime();
             const db = new Date(b.applied_at ?? b.created_at).getTime();
@@ -95,14 +95,11 @@ export default function ApplicationsPage() {
         );
     }
 
-    if (!isCandidate) {
+    if (err) {
         return (
             <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white px-4 py-8">
-                <div className="mx-auto max-w-5xl rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
-                    <p className="text-sm font-medium text-slate-900">Applications are available for candidates only.</p>
-                    <Link href="/" className="mt-3 inline-flex text-sm text-emerald-700 hover:underline">
-                        ← Back to dashboard
-                    </Link>
+                <div className="mx-auto max-w-5xl rounded-3xl border border-red-200 bg-red-50 p-6 text-sm text-red-800">
+                    {err}
                 </div>
             </div>
         );
@@ -111,21 +108,14 @@ export default function ApplicationsPage() {
     return (
         <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white px-4 py-8">
             <div className="mx-auto max-w-5xl">
-                <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div className="mb-6 flex items-center justify-between">
                     <Link href="/" className="text-sm font-medium text-emerald-800 hover:underline">
                         ← Back to jobs
                     </Link>
-
-                    <h1 className="text-xl font-semibold text-slate-900">My Applications</h1>
+                    <h1 className="text-xl font-semibold text-slate-900">Applications</h1>
                 </div>
 
-                {err ? (
-                    <div className="rounded-3xl border border-red-200 bg-red-50 p-6 text-sm text-red-800">
-                        {err}
-                    </div>
-                ) : null}
-
-                {sorted.length === 0 ? (
+                {rows.length === 0 ? (
                     <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
                         <p className="text-sm text-slate-700">You haven’t applied for any jobs yet.</p>
                         <Link href="/" className="mt-3 inline-flex text-sm text-emerald-700 hover:underline">
@@ -133,71 +123,44 @@ export default function ApplicationsPage() {
                         </Link>
                     </div>
                 ) : (
-                    <div className="space-y-4">
-                        {sorted.map((a) => (
+                    <div className="rounded-3xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+                        <div className="grid grid-cols-12 gap-4 bg-slate-50 px-6 py-3 text-xs font-semibold text-slate-600">
+                            <div className="col-span-6">Job</div>
+                            <div className="col-span-3">Company</div>
+                            <div className="col-span-2">Status</div>
+                            <div className="col-span-1 text-right">Applied</div>
+                        </div>
+
+                        {rows.map((a) => (
                             <div
                                 key={a.id}
-                                className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm"
+                                className="grid grid-cols-12 gap-4 px-6 py-4 border-t border-slate-100"
                             >
-                                <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                                    <div className="min-w-0">
-                                        <Link
-                                            href={`/applications/${a.id}`}
-                                            className="text-lg font-semibold text-slate-900 hover:underline"
-                                        >
-                                            {label(a.job?.title)}
-                                        </Link>
-
-                                        <p className="mt-1 text-sm text-slate-600">
-                                            {label(a.job?.company)}
-                                        </p>
-
-                                        <div className="mt-3 flex flex-wrap gap-2">
-                                            <span className={chip(a.status)}>{a.status}</span>
-                                            {a.is_withdrawn ? (
-                                                <span className="inline-flex items-center rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-900">
-                                                    Withdrawn
-                                                </span>
-                                            ) : null}
-                                        </div>
-                                    </div>
-
-                                    <div className="text-sm text-slate-700 sm:text-right">
-                                        <div>
-                                            <span className="text-slate-500">Applied:</span> {fmtDate(a.applied_at ?? a.created_at)}
-                                        </div>
-                                        <div className="mt-1">
-                                            <span className="text-slate-500">Reviewed:</span> {fmtDate(a.reviewed_at)}
-                                        </div>
-                                    </div>
+                                <div className="col-span-6 min-w-0">
+                                    <Link
+                                        href={`/applications/${a.id}`} // optional details page
+                                        className="truncate text-sm font-semibold text-slate-900 hover:underline"
+                                    >
+                                        {label(a.job?.title)}
+                                    </Link>
                                 </div>
 
-                                <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-3">
-                                    <Info label="Expected salary" value={a.expected_salary != null ? fmtMoney(a.expected_salary) : "—"} />
-                                    <Info label="Available from" value={a.available_from ?? "—"} />
-                                    <Info label="Resume" value={a.resume ? "Uploaded" : "—"} />
+                                <div className="col-span-3 min-w-0">
+                                    <p className="truncate text-sm text-slate-700">{label(a.job?.company)}</p>
                                 </div>
 
-                                <div className="mt-4">
-                                    <p className="text-xs font-medium text-slate-600">Cover letter</p>
-                                    <p className="mt-1 whitespace-pre-line text-sm text-slate-800">
-                                        {label(a.cover_letter)}
-                                    </p>
+                                <div className="col-span-2">
+                                    <span className={chip(a.status)}>{a.status}</span>
+                                </div>
+
+                                <div className="col-span-1 text-right text-sm text-slate-700">
+                                    {fmtDate(a.applied_at ?? a.created_at)}
                                 </div>
                             </div>
                         ))}
                     </div>
                 )}
             </div>
-        </div>
-    );
-}
-
-function Info({ label, value }: { label: string; value: string }) {
-    return (
-        <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
-            <p className="text-xs font-medium text-slate-600">{label}</p>
-            <p className="mt-1 text-sm font-semibold text-slate-900">{value}</p>
         </div>
     );
 }

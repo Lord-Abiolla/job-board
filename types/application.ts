@@ -1,4 +1,10 @@
-export type ApplicationStatus = "PENDING" | "REVIEWED" | "ACCEPTED" | "REJECTED" | string;
+export type ApplicationStatus =
+    | "PENDING"
+    | "REVIEWED"
+    | "SHORTLISTED"
+    | "ACCEPTED"
+    | "REJECTED"
+    | string;
 
 export type ApplicationJob = {
     id: number;
@@ -20,8 +26,7 @@ export type ApplicationCandidate = {
 export type Application = {
     id: number;
     job: ApplicationJob;
-
-    candidate?: ApplicationCandidate;
+    candidate?: ApplicationCandidate; // present for employer views
 
     cover_letter: string;
     resume: string | null;
@@ -30,6 +35,7 @@ export type Application = {
     available_from: string | null;
 
     status: ApplicationStatus;
+    notes?: string | null;
     is_withdrawn: boolean;
 
     applied_at: string | null;

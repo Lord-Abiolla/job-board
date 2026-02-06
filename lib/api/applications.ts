@@ -1,5 +1,5 @@
 import { apiClient } from "./client";
-import type { Application } from "@/types/application";
+import type { Application, ApplicationStatus } from "@/types/application";
 
 export type ApplyPayload = {
     cover_letter: string;
@@ -41,12 +41,30 @@ export async function applyToJob(
     return res.data;
 }
 
-export async function listMyApplications(): Promise<Application[]> {
-    const res = await apiClient.get(`/auth/applications/`);
+export async function getApplicationById(id: string | number): Promise<Application> {
+    const res = await apiClient.get(`/applications/${id}/`);
     return res.data;
 }
 
-export async function getApplicationById(id: string | number): Promise<Application> {
-    const res = await apiClient.get(`/applications/${id}/`);
+export async function listApplications(): Promise<Application[]> {
+    const res = await apiClient.get<Application[]>("/applications/");
+    return res.data;
+}
+
+export async function getApplication(id: string | number): Promise<Application> {
+    const res = await apiClient.get<Application>(`/applications/${id}/`);
+    return res.data;
+}
+
+export type UpdateApplicationPayload = {
+    status: ApplicationStatus;
+    notes?: string;
+};
+
+export async function updateApplicationStatus(
+    id: string | number,
+    payload: UpdateApplicationPayload
+): Promise<Application> {
+    const res = await apiClient.patch<Application>(`/applications/${id}/`, payload);
     return res.data;
 }

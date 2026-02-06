@@ -175,7 +175,7 @@ export default function JobForm({ initial, mode, onSubmit, onDelete }: Props) {
                         onChange={(v) => setForm((p) => ({ ...p, job_type: v as JobType }))}
                         options={[
                             ["REMOTE", "Remote"],
-                            ["ONSITE", "On-site"],
+                            ["ON_SITE", "On-site"],
                             ["HYBRID", "Hybrid"],
                         ]}
                     />

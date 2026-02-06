@@ -1,5 +1,5 @@
 export type EmploymentType = "FULL_TIME" | "PART_TIME" | "CONTRACT" | "INTERNSHIP" | "FREELANCE";
-export type JobType = "REMOTE" | "ONSITE" | "HYBRID";
+export type JobType = "REMOTE" | "ON_SITE" | "HYBRID";
 export type ExperienceLevel = "ENTRY" | "INTERMEDIATE" | "SENIOR" | "LEAD" | "EXECUTIVE";
 export type JobStatus = "DRAFT" | "ACTIVE" | "CLOSED" | "EXPIRED";
 export type EmployerInfo = {
